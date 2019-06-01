@@ -1,0 +1,8 @@
+{
+  "domain": "screenly",
+  "name": "Screenly",
+  "documentation": "https://www.home-assistant.io/components/screenly",
+  "dependencies": [],
+  "codeowners": [],
+  "requirements": ["screenly_ose==0.0.2"]
+}
