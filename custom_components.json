@@ -1,0 +1,14 @@
+{
+    "screenly": {
+        "version": "0.0.1",
+        "local_location": "/custom_components/screenly/__init__.py",
+        "remote_location": "https://raw.githubusercontent.com/burnnat/media_player.screenly/master/custom_components/screenly/__init__.py",
+        "visit_repo": "https://github.com/burnnat/media_player.screenly",
+        "changelog": "https://github.com/burnnat/media_player.screenly/releases/latest",
+        "resources": [
+            "https://raw.githubusercontent.com/burnnat/media_player.screenly/master/custom_components/screenly/media_player.py",
+            "https://raw.githubusercontent.com/burnnat/media_player.screenly/master/custom_components/screenly/manifest.json",
+            "https://raw.githubusercontent.com/burnnat/media_player.screenly/master/custom_components/screenly/services.yaml"
+        ]
+    }
+}
