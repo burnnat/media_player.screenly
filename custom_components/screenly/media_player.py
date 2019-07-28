@@ -34,6 +34,25 @@ PLATFORM_SCHEMA = PLATFORM_SCHEMA.extend({
     }
 })
 
+SERVICE_ENABLE_ASSET = 'screenly_enable_asset'
+SERVICE_DISABLE_ASSET = 'screenly_disable_asset'
+
+ATTR_ASSET_ID = 'asset_id'
+
+ASSET_SCHEMA = vol.Schema({
+    ATTR_ENTITY_ID: cv.comp_entity_ids,
+    vol.Required(ATTR_ASSET_ID): cv.string
+})
+
+SERVICE_TO_METHOD = {
+    SERVICE_ENABLE_ASSET: {
+        'method': 'async_enable_asset',
+        'schema': ASSET_SCHEMA},
+    SERVICE_DISABLE_ASSET: {
+        'method': 'async_disable_asset',
+        'schema': ASSET_SCHEMA},
+}
+
 
 async def async_setup_platform(
         hass, config, async_add_entities, discovery_info=None):
@@ -54,6 +73,28 @@ async def async_setup_platform(
     hass.data[DATA_SCREENLY].append(screenly)
     async_add_entities([screenly], update_before_add=True)
 
+    async def async_service_handler(service):
+        """Map services to methods on ScreenlyDevice."""
+        method = SERVICE_TO_METHOD.get(service.service)
+        if not method:
+            return
+
+        params = {
+            key: value for key, value in service.data.items()
+            if key != 'entity_id'}
+
+        entity_ids = service.data.get('entity_id')
+        target_devices = [
+            player for player in hass.data[DATA_SCREENLY]
+            if player.entity_id in entity_ids]
+
+        for device in target_devices:
+            await getattr(device, method['method'])(**params)
+
+    for service in SERVICE_TO_METHOD:
+        schema = SERVICE_TO_METHOD[service]['schema']
+        hass.services.async_register(
+            DOMAIN, service, async_service_handler, schema=schema)
 
 class ScreenlyDevice(MediaPlayerDevice):
     """Representation of Screenly digital signage device."""
@@ -121,17 +162,20 @@ class ScreenlyDevice(MediaPlayerDevice):
         """Flag media player features that are supported."""
         return SUPPORT_SCREENLY
 
+    def lookup_asset(self, asset_alias):
+        """Converts an asset alias from component configuration to a true Screenly ID."""
+        if asset_alias in self._assets:
+            asset_id = self._assets[asset_alias]
+            _LOGGER.debug("Found matching id '%s' for alias '%s'",
+                asset_id, asset_alias)
+            return asset_id
+        else:
+            return asset_alias
+
     async def async_play_media(self, media_type, media_id, **kwargs):
         """Switch asset to given ID."""
         if media_type in [MEDIA_TYPE_IMAGE, MEDIA_TYPE_VIDEO, MEDIA_TYPE_URL]:
-            if media_id in self._assets:
-                asset_id = self._assets[media_id]
-                _LOGGER.debug("Found matching id '%s' for alias '%s'",
-                    asset_id, media_id)
-            else:
-                asset_id = media_id
-
-            response = await self._screenly.switch_asset(asset_id)
+            response = await self._screenly.switch_asset(self.lookup_asset(media_id))
             return bool(response)
         else:
             _LOGGER.error(
@@ -147,4 +191,14 @@ class ScreenlyDevice(MediaPlayerDevice):
     async def async_media_previous_track(self):
         """Skip to previous."""
         response = await self._screenly.previous_asset()
+        return bool(response)
+
+    async def async_enable_asset(self, asset_id):
+        """Enable asset with the given ID."""
+        response = await self._screenly.enable_asset(self.lookup_asset(asset_id))
+        return bool(response)
+
+    async def async_disable_asset(self, asset_id):
+        """Disable asset with the given ID."""
+        response = await self._screenly.disable_asset(self.lookup_asset(asset_id))
         return bool(response)
