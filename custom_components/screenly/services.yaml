@@ -1,0 +1,19 @@
+enable_asset:
+  description: Enables a Screenly asset.
+  fields:
+    entity_id:
+      description: Name(s) of the entities to set
+      example: 'screenly.living_room'
+    asset_id:
+      description: Name(s) of the assets to enable
+      example: 'my_asset'
+
+disable_asset:
+  description: Disables a Screenly asset.
+  fields:
+    entity_id:
+      description: Name(s) of the entities to set
+      example: 'screenly.living_room'
+    asset_id:
+      description: Name(s) of the assets to disable
+      example: 'my_asset'
