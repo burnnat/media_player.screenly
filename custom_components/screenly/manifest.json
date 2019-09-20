@@ -4,5 +4,5 @@
   "documentation": "https://www.home-assistant.io/components/screenly",
   "dependencies": [],
   "codeowners": [],
-  "requirements": ["screenly_ose==0.0.3"]
+  "requirements": ["screenly_ose==0.0.4"]
 }

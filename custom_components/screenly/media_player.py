@@ -8,15 +8,17 @@ from homeassistant.components.media_player import (
 from homeassistant.components.media_player.const import (
     DOMAIN, MEDIA_TYPE_IMAGE, MEDIA_TYPE_URL, MEDIA_TYPE_VIDEO,
     SUPPORT_NEXT_TRACK, SUPPORT_PLAY_MEDIA, SUPPORT_PREVIOUS_TRACK)
+from homeassistant.components.switch import SwitchDevice
 from homeassistant.const import (
     ATTR_ENTITY_ID, CONF_HOST, CONF_NAME, CONF_PORT, CONF_SSL, CONF_TIMEOUT,
     STATE_OFF, STATE_ON)
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 
+from .const import DATA_SCREENLY
+
 _LOGGER = logging.getLogger(__name__)
 
-DATA_SCREENLY = 'screenly'
 DEFAULT_NAME = 'Screenly'
 CONF_ASSETS = 'assets'
 
@@ -53,7 +55,6 @@ SERVICE_TO_METHOD = {
         'schema': ASSET_SCHEMA},
 }
 
-
 async def async_setup_platform(
         hass, config, async_add_entities, discovery_info=None):
     """Set up the Screenly media player platform."""
@@ -69,6 +70,8 @@ async def async_setup_platform(
 
     screenly = ScreenlyDevice(async_get_clientsession(
         hass, verify_ssl=False), name, host, port, ssl, timeout, assets)
+
+    _LOGGER.debug("Adding Screenly device entity: %s", name)
 
     hass.data[DATA_SCREENLY].append(screenly)
     async_add_entities([screenly], update_before_add=True)
@@ -106,20 +109,40 @@ class ScreenlyDevice(MediaPlayerDevice):
         import screenly_ose as screenly
 
         self._name = name
-        self._assets = assets
+        self._asset_alias_to_id = assets
         self._state = None
+
+        self._asset_entities = {}
 
         client_timeout = aiohttp.ClientTimeout(total=timeout)
         self._screenly = screenly.Screenly(
             websession, host, port=port, timeout=timeout)
 
+    def asset_aliases(self):
+        return self._asset_alias_to_id
+
+    def add_child(self, asset_entity):
+        asset_id = asset_entity.unique_id
+        _LOGGER.debug("Registering asset entity '%s' for device %s with id: %s", asset_entity.alias, self._name, asset_id)
+        self._asset_entities[asset_id] = asset_entity
+
     async def async_update(self):
         """Update state of device."""
-        asset = await self._screenly.get_current_asset()
+        assets = await self._screenly.list_assets()
+        active = None
 
-        if asset:
+        for asset in assets:
+            if asset['active']:
+                active = asset
+            
+            asset_id = asset['id']
+
+            if asset_id in self._asset_entities:
+                self._asset_entities[asset_id].update_from_raw(asset)
+
+        if active:
             self._state = STATE_ON
-            self._asset = asset
+            self._asset = active
         else:
             self._state = STATE_OFF
 
@@ -164,8 +187,8 @@ class ScreenlyDevice(MediaPlayerDevice):
 
     def lookup_asset(self, asset_alias):
         """Converts an asset alias from component configuration to a true Screenly ID."""
-        if asset_alias in self._assets:
-            asset_id = self._assets[asset_alias]
+        if asset_alias in self._asset_alias_to_id:
+            asset_id = self._asset_alias_to_id[asset_alias]
             _LOGGER.debug("Found matching id '%s' for alias '%s'",
                 asset_id, asset_alias)
             return asset_id
@@ -175,6 +198,7 @@ class ScreenlyDevice(MediaPlayerDevice):
     async def async_play_media(self, media_type, media_id, **kwargs):
         """Switch asset to given ID."""
         if media_type in [MEDIA_TYPE_IMAGE, MEDIA_TYPE_VIDEO, MEDIA_TYPE_URL]:
+            _LOGGER.debug("Displaying asset: %s", media_id)
             response = await self._screenly.switch_asset(self.lookup_asset(media_id))
             return bool(response)
         else:
@@ -185,20 +209,24 @@ class ScreenlyDevice(MediaPlayerDevice):
 
     async def async_media_next_track(self):
         """Skip to next."""
+        _LOGGER.debug("Switching to next asset")
         response = await self._screenly.next_asset()
         return bool(response)
 
     async def async_media_previous_track(self):
         """Skip to previous."""
+        _LOGGER.debug("Switching to previous asset")
         response = await self._screenly.previous_asset()
         return bool(response)
 
     async def async_enable_asset(self, asset_id):
         """Enable asset with the given ID."""
+        _LOGGER.debug("Enabling asset: %s", asset_id)
         response = await self._screenly.enable_asset(self.lookup_asset(asset_id))
         return bool(response)
 
     async def async_disable_asset(self, asset_id):
         """Disable asset with the given ID."""
+        _LOGGER.debug("Disabling asset: %s", asset_id)
         response = await self._screenly.disable_asset(self.lookup_asset(asset_id))
         return bool(response)
