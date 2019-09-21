@@ -1,7 +1,7 @@
 {
   "domain": "screenly",
   "name": "Screenly",
-  "documentation": "https://www.home-assistant.io/components/screenly",
+  "documentation": "https://github.com/burnnat/media_player.screenly",
   "dependencies": [],
   "codeowners": [],
   "requirements": ["screenly_ose==0.0.4"]
