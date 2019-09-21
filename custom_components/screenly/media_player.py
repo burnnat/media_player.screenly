@@ -222,11 +222,21 @@ class ScreenlyDevice(MediaPlayerDevice):
     async def async_enable_asset(self, asset_id):
         """Enable asset with the given ID."""
         _LOGGER.debug("Enabling asset: %s", asset_id)
-        response = await self._screenly.enable_asset(self.lookup_asset(asset_id))
+        asset_id = self.lookup_asset(asset_id)
+        response = await self._screenly.enable_asset(asset_id)
+
+        if asset_id in self._asset_entities:
+            await self.async_update_ha_state(force_refresh=True)
+
         return bool(response)
 
     async def async_disable_asset(self, asset_id):
         """Disable asset with the given ID."""
         _LOGGER.debug("Disabling asset: %s", asset_id)
-        response = await self._screenly.disable_asset(self.lookup_asset(asset_id))
+        asset_id = self.lookup_asset(asset_id)
+        response = await self._screenly.disable_asset(asset_id)
+
+        if asset_id in self._asset_entities:
+            await self.async_update_ha_state(force_refresh=True)
+
         return bool(response)
