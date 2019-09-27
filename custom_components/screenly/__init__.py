@@ -1,5 +1,5 @@
 """The Screenly component."""
-__version__ = '0.0.4'
+__version__ = '0.0.5'
 
 from homeassistant.helpers.discovery import async_load_platform
 
