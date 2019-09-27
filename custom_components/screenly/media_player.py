@@ -131,14 +131,15 @@ class ScreenlyDevice(MediaPlayerDevice):
         assets = await self._screenly.list_assets()
         active = None
 
-        for asset in assets:
-            if asset['active']:
-                active = asset
-            
-            asset_id = asset['id']
+        if assets:
+            for asset in assets:
+                if asset['active']:
+                    active = asset
+                
+                asset_id = asset['id']
 
-            if asset_id in self._asset_entities:
-                self._asset_entities[asset_id].update_from_raw(asset)
+                if asset_id in self._asset_entities:
+                    self._asset_entities[asset_id].update_from_raw(asset)
 
         if active:
             self._state = STATE_ON
